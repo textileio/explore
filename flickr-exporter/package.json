@@ -1,0 +1,34 @@
+{
+  "name": "textile-flickr-transfer",
+  "version": "0.1.0",
+  "description": "A command line tool to bulk export a user's Flickr (TM) photos into a Textile wallet",
+  "main": "textile-flickr-transfer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "flow": "flow"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/textileio/textile-explore/flickr-exporter"
+  },
+  "keywords": [
+    "flickr",
+    "photos",
+    "textile",
+    "distributed",
+    "decentralized",
+    "export",
+    "import"
+  ],
+  "author": "robbynshaw@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.19.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.13.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.16.0",
+    "flow-bin": "^0.92.1"
+  }
+}
