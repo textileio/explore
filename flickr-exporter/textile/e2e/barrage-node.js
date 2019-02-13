@@ -1,8 +1,8 @@
 const Textile = require('../index')
 
 let client = new Textile({
-	url: 'http://127.0.0.1',
-	port: 40600,
+  url: 'http://127.0.0.1',
+  port: 40600,
 })
 
 client.peer.get()

@@ -1,4 +1,4 @@
-# Import Flickr :tm Photos into Textile
+# Import Flickr &trade; Photos into Textile
 
 ## What
 

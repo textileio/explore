@@ -4,8 +4,7 @@
   "description": "A command line tool to bulk export a user's Flickr (TM) photos into a Textile wallet",
   "main": "textile-flickr-transfer.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "flow": "flow"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -28,7 +27,6 @@
   "devDependencies": {
     "eslint": "^5.13.0",
     "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.16.0",
-    "flow-bin": "^0.92.1"
+    "eslint-plugin-import": "^2.16.0"
   }
 }
