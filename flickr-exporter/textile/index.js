@@ -1,22 +1,25 @@
-const Textile = require('./core/textile')
+const Peer = require("./modules/peer");
+// const Profile = require('./modules/profile'),
+// const Mills = require('./modules/mills'),
+// const Threads = require('./modules/threads'),
+// const Blocks = require('./modules/blocks'),
+// const Messages = require('./modules/messages'),
+// const Files = require('./modules/files'),
+// const Keys = require('./modules/keys'),
+// const Sub = require('./modules/sub'),
+// const Invites = require('./modules/invites'),
+// const Notifications = require('./modules/notifications'),
+// const Cafes = require('./modules/cafes'),
+// const Swarm = require('./modules/swarm'),
+// const Contacts = require('./modules/contacts'),
+// const IPFS = require('./modules/ipfs'),
+// const Confg = require('./modules/config'),
 
-Textile.addModules([
-  require('./modules/peer'),
-  //require('./modules/profile'),
-  //require('./modules/mills'),
-  //require('./modules/threads'),
-  //require('./modules/blocks'),
-  //require('./modules/messages'),
-  //require('./modules/files'),
-  //require('./modules/keys'),
-  //require('./modules/sub'),
-  //require('./modules/invites'),
-  //require('./modules/notifications'),
-  //require('./modules/cafes'),
-  //require('./modules/swarm'),
-  //require('./modules/contacts'),
-  //require('./modules/ipfs'),
-  //require('./modules/config'),
-])
+class Textile {
+  constructor(options) {
+    this.opts = options || {};
+    this.peer = new Peer(this.opts);
+  }
+}
 
-module.exports = Textile
+module.exports = Textile;

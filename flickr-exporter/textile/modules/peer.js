@@ -1,30 +1,27 @@
-const Connection = require('../core/connection')
+const API = require("../core/api.js");
 
 /**
  * Peer is an API module for getting basic information about a Textile node
  */
-class Peer {
+class Peer extends API {
   constructor(opts) {
-    this.name = 'peer' // required for module interface
-    this.opts = opts
+    super(opts);
+    this.name = "peer"; // required for module interface
+    this.opts = opts;
   }
 
   /** get retrieves the peer id of a Textile node */
   async get() {
-    return await this.con().get('/api/v0/peer')
+    return this.con().get("/api/v0/peer");
   }
 
   async address() {
-    return await this.con().get('/api/v0/address')
-  }
-  
-  async ping() {
-    return await this.con().get('/api/v0/ping')
+    return this.con().get("/api/v0/address");
   }
 
-  con() {
-    return Connection.get(this.opts)
+  async ping() {
+    return this.con().get("/api/v0/ping");
   }
 }
 
-module.exports = Peer
+module.exports = Peer;

@@ -1,54 +1,59 @@
-const expect = require('chai').expect
-const nock = require('nock')
-const Peer = require('../../modules/peer')
-const responses = require('./responses/peer.json')
+const { describe, it } = require("mocha");
+const { expect } = require("chai");
+const nock = require("nock");
+const Peer = require("../../modules/peer");
+const responses = require("./responses/peer.json");
 
-let opts = {
-  url: 'http://127.0.0.1',
+const opts = {
+  url: "http://127.0.0.1",
   port: 40600,
-  blah: '',
-}
+  blah: ""
+};
 
-const ROOT = `${opts.url}:${opts.port}`
+const ROOT = `${opts.url}:${opts.port}`;
 
-let peer = new Peer(opts)
+const peer = new Peer(opts);
 
-describe('peer api get', () => {  
-  it('should respond with plain text peer id', async () => {
+describe("peer api get", () => {
+  it("should respond with plain text peer id", async () => {
     nock(ROOT)
-    .get('/api/v0/peer')
-    .reply(200, responses.peer)
+      .get("/api/v0/peer")
+      .reply(200, responses.peer);
 
-    let rsp = await peer.get()
-    expect(rsp.data).to.equal('12D3KooWNWU8RkgSacfSnrQMlq9RsdciRx7W1wFAJeVNyhUMdSdP')
-  })
-})
+    const rsp = await peer.get();
+    expect(rsp.data).to.equal(
+      "12D3KooWNWU8RkgSacfSnrQMlq9RsdciRx7W1wFAJeVNyhUMdSdP"
+    );
+  });
+});
 
-describe('peer api address', () => {
-  it('should respond with plain text address', async () => {
+describe("peer api address", () => {
+  it("should respond with plain text address", async () => {
     nock(ROOT)
-    .get('/api/v0/address')
-    .reply(200, responses.address)
+      .get("/api/v0/address")
+      .reply(200, responses.address);
 
-    let rsp = await peer.address()
-    expect(rsp.data).to.equal('P9UcFifmikQr591RhgUShlAJd5Sxfcj3W8hrhwYG9oDTButN')
-  })
-})
+    const rsp = await peer.address();
+    expect(rsp.data).to.equal(
+      "P9UcFifmikQr591RhgUShlAJd5Sxfcj3W8hrhwYG9oDTButN"
+    );
+  });
+});
 
-describe('peer api ping', () => {
-  it('should respond with 400', async () => {
+describe("peer api ping", () => {
+  it("should respond with 400", async () => {
     nock(ROOT)
-    .get('/api/v0/ping')
-    .reply(400, 'x')
+      .get("/api/v0/ping")
+      .reply(400, "x");
 
-    let err
+    let err;
 
     try {
-      await peer.ping()
+      await peer.ping();
     } catch (error) {
-      err = error.message
+      err = error.message;
     }
 
-    expect(err).to.equal('Request failed with status code 400')
-  })
-})
+    expect(err).to.equal("Request failed with status code 400");
+  });
+});
