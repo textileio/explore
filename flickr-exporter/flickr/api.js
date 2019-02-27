@@ -1,108 +1,70 @@
-const Flickr = require("flickr-sdk");
-const EventEmitter = require("events");
-const readline = require("readline");
+const { EventEmitter2 } = require("eventemitter2");
+const uuid = require("uuid/v4");
+const Path = require("path");
+const Fs = require("fs");
+const Axios = require("axios");
+const Auth = require("./auth");
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+function ensureDir(path) {
+  const dirname = Path.dirname(path);
+  if (!Fs.existsSync(dirname)) {
+    Fs.mkdirSync(dirname);
+  }
+}
 
-const api = (function API() {
-  let userAuth = null;
-  let simpleAuth = null;
-
-  function question(msg) {
-    return new Promise(function(resolve, reject) {
-      rl.question(msg, line => line);
-    });
+async function download(url, path) {
+  ensureDir(path);
+  if (Fs.existsSync(path)) {
+    return new Promise(resolve => resolve());
   }
 
-  return {
-    async getUserAuth($this) {
-      if (userAuth) return userAuth;
+  const writer = Fs.createWriteStream(path);
 
-      const oauth = new Flickr.OAuth($this.consumerKey, $this.consumerSecret);
+  const resp = await Axios({
+    url,
+    method: "GET",
+    responseType: "stream"
+  });
 
-      try {
-        if ($this.oauthToken) {
-          console.log("Has an oauth token", $this.oauthToken);
-          userAuth = new Flickr(
-            Flickr.OAuth.createPlugin(
-              $this.consumerKey,
-              $this.consumerSecret,
-              $this.oauthToken,
-              $this.oauthTokenSecret
-            )
-          );
-        } else {
-          $this.emit("info", { msg: "Requesting authorization token" });
-          const { body } = await oauth.request("");
-          $this.emit("info", {
-            msg: "Authorization token retrieved",
-            data: {
-              key: $this.consumerKey,
-              secret: $this.consumerSecret,
-              token: body.oauth_token,
-              tokenSecret: body.oauth_token_secret
-            }
-          });
+  resp.data.pipe(writer);
 
-          userAuth = new Flickr(
-            Flickr.OAuth.createPlugin(
-              $this.consumerKey,
-              $this.consumerSecret,
-              body.oauth_token,
-              body.oauth_token_secret
-            )
-          );
+  return new Promise((resolve, reject) => {
+    writer.on("finish", resolve);
+    writer.on("error", reject);
+  });
+}
 
-          const url = oauth.authorizeUrl(body.oauth_token);
-          console.log(`Visit the URL to authorize the app: ${url}`);
+const userId = new WeakMap();
 
-          const key = await question("Enter the verification key:  ");
-          console.log(`Key Entered: ${key}`);
-        }
-        // var login = await userAuth.test.login();
-        // console.log('login', login);
-        return userAuth;
-      } catch (err) {
-        $this.emit("error", { msg: `Authorization failed. ${err}` });
-        throw err;
-      }
-    },
-
-    getSimpleAuth($this) {
-      if (simpleAuth) return simpleAuth;
-      simpleAuth = new Flickr($this.consumerKey);
-      return simpleAuth;
-    }
-  };
-})();
-
-class FlickrAPI extends EventEmitter {
+class FlickrAPI extends EventEmitter2 {
   constructor(options) {
     super();
-    this.name = "flickr (TM)";
+    this.name = "Flickr (TM)";
     this.username = options.username;
-    this.consumerKey = options.apiKey;
-    this.consumerSecret = options.apiSecret;
-    this.oauthToken = options.oauthToken;
-    this.oauthTokenSecret = options.oauthTokenSecret;
+
+    this.auth = new Auth(options);
+    this.auth.onAny((e, v) => this.emit(e, v));
   }
 
   async getUser() {
     try {
-      this.emit("info", { msg: `Requesting user '${this.username}'` });
+      this.emit("user.requesting", {
+        msg: `Requesting user '${this.username}'`,
+        lvl: 1
+      });
 
-      const { body } = await api.getSimpleAuth(this).people.findByUsername({
+      const { body } = await this.auth.getSimpleAuth().people.findByUsername({
         username: this.username
       });
-      this.emit("info", {
-        msg: `Found info for user '${this.username}'`
+      this.emit("user.received", {
+        msg: `Found info for user '${this.username}'`,
+        type: "success",
+        lvl: 1,
+        data: body
       });
       return body.user.nsid;
     } catch (err) {
-      this.emit("error", {
+      this.emit("user.error", {
         msg: `Unable to find user '${this.username}'`
       });
       throw err;
@@ -111,25 +73,31 @@ class FlickrAPI extends EventEmitter {
 
   async getUserPhotos(options) {
     try {
-      this.emit("info", { msg: `Getting a list of user photos` });
+      this.emit("photolist.requesting", {
+        msg: `Getting a list of user photos`,
+        lvl: 1
+      });
 
-      const flickr = await api.getUserAuth(this);
+      const flickr = await this.auth.getUserAuth(options.user_id);
+
       const { body } = await flickr.people.getPhotos(options);
-      this.emit("info", {
+      this.emit("photolist.received", {
         msg: `Found photos for user`,
+        lvl: 1,
+        type: "success",
         data: body
       });
       return body;
     } catch (err) {
-      this.emit("error", {
+      this.emit("photolist.error", {
         msg: `Unable to get user photos`
       });
       throw err;
     }
   }
 
-  async getPhoto(id) {
-    const flickr = await api.getUserAuth(this);
+  async getPhoto(nsid, id) {
+    const flickr = await this.auth.getUserAuth(nsid);
     const infoResp = await flickr.photos.getInfo({ photo_id: id });
     const info = infoResp.body.photo;
     const {
@@ -151,6 +119,19 @@ class FlickrAPI extends EventEmitter {
       }
     }
 
+    const instanceID = uuid();
+    const path = Path.resolve(process.cwd(), "exported", info.id);
+    this.emit("photo.download.start", {
+      msg: `Starting download of photo '${info.title._content}'`,
+      instance: instanceID
+    });
+    await download(original.source, path);
+    this.emit("photo.download.complete", {
+      msg: `Completed download of photo '${info.title._content}'`,
+      instance: instanceID,
+      type: "complete"
+    });
+
     return {
       id: info.id,
       dateuploaded: info.dateuploaded,
@@ -164,22 +145,30 @@ class FlickrAPI extends EventEmitter {
       canDownload: candownload,
       source: original.source,
       width: original.width,
-      height: original.height
+      height: original.height,
+      path
     };
   }
 
   async getPhotoList(pageNum) {
-    const nsid = await this.getUser(); // TODO Cache this
+    const photos = [];
+    let nsid = userId.get(this);
+    if (!nsid) {
+      nsid = await this.getUser();
+      userId.set(this, nsid);
+    }
 
-    const { photos } = await this.getUserPhotos({
+    const {
+      photos: { photo, page, pages }
+    } = await this.getUserPhotos({
       user_id: nsid,
       page: pageNum
     });
 
-    const { photo, page, pages } = photos;
     for (let i = 0; i < photo.length; i += 1) {
-      // TODO This stuff could definitely be grouped
-      const photoInfo = await this.getPhoto(photo[i].id);
+      // If desired, this could be grouped so that the requests all
+      // fire off in a group for better performance
+      const photoInfo = await this.getPhoto(nsid, photo[i].id);
       photos.push(photoInfo);
     }
 

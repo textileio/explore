@@ -1,13 +1,15 @@
-const EventEmitter = require("events");
+const { EventEmitter2 } = require("eventemitter2");
 
-class Export extends EventEmitter {
+class Export extends EventEmitter2 {
   constructor(api) {
     super();
     this.api = api;
     this.name = api.name;
+
+    this.api.onAny((e, v) => this.emit(e, v));
   }
 
-  async run() {
+  async run(onPhotoFound) {
     let hasMore = true;
     let curPage = 1;
 
@@ -23,11 +25,22 @@ class Export extends EventEmitter {
         hasMore = page < pages;
 
         for (let i = 0; i < photoList.length; i += 1) {
-          this.emit("photo.found", photoList[i]);
+          const photo = photoList[i];
+          if (onPhotoFound) {
+            onPhotoFound(photo);
+          }
         }
       }
+      this.emit("info", {
+        msg: `${this.name} export complete`,
+        type: "success"
+      });
     } catch (err) {
-      this.emit("error", { msg: `${this.name} export failed`, error: err });
+      this.emit("error", {
+        msg: `${this.name} export failed`,
+        error: err,
+        type: "error"
+      });
     }
   }
 }

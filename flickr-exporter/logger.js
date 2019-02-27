@@ -1,56 +1,81 @@
+const readline = require("readline");
 const { Signale } = require("signale");
 
+const DEBUG = 1;
+
 class Logger {
-  constructor() {
+  constructor(level) {
+    this.level = level || 0;
+
     this.loggers = {};
     this.log = new Signale();
   }
 
-  getInteractive({ scope }) {
-    const scp = scope || "default";
-    if (!this.loggers[scp]) {
-      this.loggers[scp] = new Signale({ interactive: true });
+  getInteractive(instanceId) {
+    if (!this.loggers[instanceId]) {
+      // Hack to account for signale issue
+      this.log.note("");
+      process.stdout.moveCursor(0, -1);
+      this.loggers[instanceId] = new Signale({ interactive: true });
     }
-    return this.loggers[scp];
+    return this.loggers[instanceId];
   }
 
-  destroyInteractive({ scope }) {
-    delete this.loggers[scope || "default"];
+  destroyInteractive(instanceId) {
+    // this.loggers[instanceId].endInteractive();
+    delete this.loggers[instanceId];
   }
 
-  static write(wtr, type, info) {
+  question(msg) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: false
+    });
+
+    return new Promise(resolve => {
+      this.log.note(msg);
+      rl.question("Press enter to continue: ", typed => {
+        rl.close();
+        return resolve(typed);
+      });
+    });
+  }
+
+  write(wtr, type, info) {
     const { msg, data, error } = info;
+    let newType = type;
     if (error) {
-      wtr[type](error);
+      wtr.error(error);
+      newType = "error";
+      if (error.response && error.response.data) {
+        wtr.error(error.response.data);
+      }
     }
 
-    if (data) {
-      wtr[type](msg, data);
+    if (data && this.level >= DEBUG) {
+      wtr[newType](msg, data);
     } else {
-      wtr[type](msg);
+      wtr[newType](msg);
     }
   }
 
   listen(ee) {
-    ee.on("await.start", d => {
-      const lg = this.getInteractive(d);
-      Logger.write(lg, "await", d);
-    });
-    ee.on("await.success", d => {
-      const lg = this.getInteractive(d);
-      Logger.write(lg, "success", d);
-      this.destroyInteractive(d);
-    });
-    ee.on("await.error", d => {
-      const lg = this.getInteractive(d);
-      Logger.write(lg, "error", d);
-      this.destroyInteractive(d);
-    });
-    ee.on("info", d => {
-      Logger.write(this.log, "note", d);
-    });
-    ee.on("error", d => {
-      Logger.write(this.log, "error", d);
+    ee.onAny(async (e, v) => {
+      if (!v.lvl || v.lvl <= this.level) {
+        if (v.instance) {
+          const lg = this.getInteractive(v.instance);
+          const type = v.type || "await";
+          this.write(lg, type, v);
+
+          if (v.end || v.type === "complete" || v.type === "error") {
+            this.destroyInteractive(v.instance);
+          }
+        } else {
+          const type = v.type || "note";
+          this.write(this.log, type, v);
+        }
+      }
     });
   }
 }
