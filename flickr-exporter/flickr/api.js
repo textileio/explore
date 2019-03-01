@@ -3,17 +3,9 @@ const uuid = require("uuid/v4");
 const Path = require("path");
 const Fs = require("fs");
 const Axios = require("axios");
-const Auth = require("./auth");
-
-function ensureDir(path) {
-  const dirname = Path.dirname(path);
-  if (!Fs.existsSync(dirname)) {
-    Fs.mkdirSync(dirname);
-  }
-}
+const Flickr = require("flickr-sdk");
 
 async function download(url, path) {
-  ensureDir(path);
   if (Fs.existsSync(path)) {
     return new Promise(resolve => resolve());
   }
@@ -34,53 +26,53 @@ async function download(url, path) {
   });
 }
 
-const userId = new WeakMap();
-
 class FlickrAPI extends EventEmitter2 {
   constructor(options) {
     super();
     this.name = "Flickr (TM)";
-    this.username = options.username;
-
-    this.auth = new Auth(options);
-    this.auth.onAny((e, v) => this.emit(e, v));
+    this.api = null;
+    this.secretsRepo = options.secretsRepo;
+    this.outputDir = options.outputDir;
+    this.batchSize = options.batchSize;
+    this.user = undefined;
   }
 
-  async getUser() {
-    try {
-      this.emit("user.requesting", {
-        msg: `Requesting user '${this.username}'`,
-        lvl: 1
-      });
-
-      const { body } = await this.auth.getSimpleAuth().people.findByUsername({
-        username: this.username
-      });
-      this.emit("user.received", {
-        msg: `Found info for user '${this.username}'`,
-        type: "success",
-        lvl: 1,
-        data: body
-      });
-      return body.user.nsid;
-    } catch (err) {
-      this.emit("user.error", {
-        msg: `Unable to find user '${this.username}'`
-      });
-      throw err;
+  init() {
+    if (this.api) {
+      return true;
     }
+
+    this.user = this.secretsRepo.getUser();
+    if (!this.user) {
+      this.emit("user.missing", {
+        msg: "No user was found. Please run the 'init' command and try again.",
+        type: "error"
+      });
+      return false;
+    }
+    this.api = new Flickr(
+      Flickr.OAuth.createPlugin(
+        this.user.consumerKey,
+        this.user.consumerSecret,
+        this.user.token,
+        this.user.tokenSecret
+      )
+    );
+    return true;
   }
 
   async getUserPhotos(options) {
+    if (!this.init()) {
+      return null;
+    }
+
     try {
       this.emit("photolist.requesting", {
         msg: `Getting a list of user photos`,
         lvl: 1
       });
 
-      const flickr = await this.auth.getUserAuth(options.user_id);
-
-      const { body } = await flickr.people.getPhotos(options);
+      const { body } = await this.api.people.getPhotos(options);
       this.emit("photolist.received", {
         msg: `Found photos for user`,
         lvl: 1,
@@ -96,18 +88,21 @@ class FlickrAPI extends EventEmitter2 {
     }
   }
 
-  async getPhoto(nsid, id) {
-    const flickr = await this.auth.getUserAuth(nsid);
-    const infoResp = await flickr.photos.getInfo({ photo_id: id });
+  async getPhoto(id) {
+    if (!this.init()) {
+      return null;
+    }
+
+    const infoResp = await this.api.photos.getInfo({ photo_id: id });
     const info = infoResp.body.photo;
     const {
       body: {
         sizes: { size, candownload }
       }
-    } = await flickr.photos.getSizes({ photo_id: id });
+    } = await this.api.photos.getSizes({ photo_id: id });
     const {
       body: { comments }
-    } = await flickr.photos.comments.getList({ photo_id: id });
+    } = await this.api.photos.comments.getList({ photo_id: id });
 
     let original = {};
 
@@ -120,7 +115,8 @@ class FlickrAPI extends EventEmitter2 {
     }
 
     const instanceID = uuid();
-    const path = Path.resolve(process.cwd(), "exported", info.id);
+    const path = Path.resolve(this.outputDir, `${info.id}.jpg`);
+
     this.emit("photo.download.start", {
       msg: `Starting download of photo '${info.title._content}'`,
       instance: instanceID
@@ -151,24 +147,24 @@ class FlickrAPI extends EventEmitter2 {
   }
 
   async getPhotoList(pageNum) {
-    const photos = [];
-    let nsid = userId.get(this);
-    if (!nsid) {
-      nsid = await this.getUser();
-      userId.set(this, nsid);
+    if (!this.init()) {
+      return null;
     }
+
+    const photos = [];
 
     const {
       photos: { photo, page, pages }
     } = await this.getUserPhotos({
-      user_id: nsid,
-      page: pageNum
+      user_id: this.user.nsid,
+      page: pageNum,
+      per_page: this.batchSize
     });
 
     for (let i = 0; i < photo.length; i += 1) {
       // If desired, this could be grouped so that the requests all
       // fire off in a group for better performance
-      const photoInfo = await this.getPhoto(nsid, photo[i].id);
+      const photoInfo = await this.getPhoto(photo[i].id);
       photos.push(photoInfo);
     }
 
