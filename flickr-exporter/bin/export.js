@@ -2,12 +2,12 @@
 
 const path = require("path");
 const app = require("commander");
-const pkg = require("./package.json");
-const Sync = require("./core/sync");
-const Logger = require("./logger.js");
-const SecretsRepo = require("./secrets-repo");
-const Authorizer = require("./flickr/authorizer");
-const API = require("./flickr/api");
+const pkg = require("../package.json");
+const Sync = require("../core/sync");
+const Logger = require("../logger.js");
+const SecretsRepo = require("../secrets-repo");
+const Authorizer = require("../flickr/authorizer");
+const API = require("../flickr/api");
 
 function incVerbose(v, total) {
   return total + 1;

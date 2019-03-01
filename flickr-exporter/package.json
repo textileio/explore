@@ -8,6 +8,9 @@
     "lint": "./node_modules/.bin/eslint --fix .",
     "lint-watch": "nodemon --watch */**.js -x './node_modules/.bin/eslint --fix .'"
   },
+  "bin": {
+    "flickr-exporter": "./bin/export.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/textileio/textile-explore/flickr-exporter"
