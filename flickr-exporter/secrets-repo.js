@@ -2,34 +2,28 @@ const Path = require("path");
 const Fs = require("fs");
 
 class SecretsRepo {
-  constructor() {
-    this.data = null;
-    this.filePath = Path.resolve(__dirname, ".secrets.json");
+  constructor(opts) {
+    this.filePath = Path.resolve(opts.outputDir, ".user.json");
   }
 
-  getData() {
-    if (!this.data && Fs.existsSync(this.filePath)) {
-      const raw = Fs.readFileSync(this.filePath);
-      this.data = JSON.parse(raw) || {};
+  ensureDir() {
+    const dirname = Path.dirname(this.filePath);
+    if (!Fs.existsSync(dirname)) {
+      Fs.mkdirSync(dirname);
     }
-    return this.data || {};
   }
 
-  getOAuthToken() {
-    return this.getData().oauthToken;
+  getUser() {
+    this.ensureDir();
+    if (Fs.existsSync(this.filePath)) {
+      const raw = Fs.readFileSync(this.filePath);
+      return JSON.parse(raw);
+    }
+    return undefined;
   }
 
-  getOAuthTokenSecret() {
-    return this.getData().oauthTokenSecret;
-  }
-
-  set(token, tokenSecret) {
-    const data = this.getData();
-    data.oauthToken = token;
-    data.oauthTokenSecret = tokenSecret;
-    this.data = data;
-
-    const raw = JSON.stringify(this.data);
+  setUser(user) {
+    const raw = JSON.stringify(user);
     Fs.writeFileSync(this.filePath, raw);
   }
 }

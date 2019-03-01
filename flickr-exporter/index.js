@@ -1,35 +1,34 @@
 #!/usr/bin/env node
 
+const path = require("path");
 const app = require("commander");
 const pkg = require("./package.json");
-const Flickr = require("./flickr/api");
-const Export = require("./core/export");
 const Sync = require("./core/sync");
 const Logger = require("./logger.js");
 const SecretsRepo = require("./secrets-repo");
+const Authorizer = require("./flickr/authorizer");
+const API = require("./flickr/api");
 
 function incVerbose(v, total) {
   return total + 1;
 }
 
 /** runCommand does some shared setup before calling the apiCallback
- *  with as fn (logger, api)
+ *  with as fn (logger, opts)
  */
 async function runCommand(cmd, apiCallback) {
   const logger = new Logger(cmd.verbose);
-  const secrets = new SecretsRepo();
   const opts = {
-    ...cmd,
-    secretsRepo: secrets,
-    onVerifyUrl: async url => {
-      await logger.question(
-        `Please visit this page to authorize this app: ${url}`
-      );
-    }
+    apiKey: cmd.apiKey,
+    apiSecret: cmd.apiSecret,
+    outputDir: cmd.outputDir || path.join(process.cwd(), "export"),
+    batchSize: cmd.batchSize || 5,
+    authPort: cmd.authPort || 7777
   };
+  const secrets = new SecretsRepo(opts);
 
-  const api = new Flickr(opts);
-  await apiCallback(logger, api);
+  opts.secretsRepo = secrets;
+  await apiCallback(logger, opts);
 }
 
 async function run() {
@@ -39,15 +38,22 @@ async function run() {
       "Transfer personal photos from your Flickr (TM) account into your Textile wallet"
     );
 
-  // Export command
+  // Init command
   app
-    .command("export")
+    .command("init")
     .description(
-      "export your Flickr (TM) photos and comments to a local directory"
+      "initialize the exporter by authorizing your flickr account. (Only needs to be done once.)"
     )
     .option("-k, --api-key [key]", "Your Flickr (TM) API key")
     .option("-s, --api-secret [secret]", "Your Flickr (TM) API secret")
-    .option("-u, --username [username]", "Your Flickr (TM) username")
+    .option(
+      "-o, --output-dir [dir]",
+      "The directory in which to save your Flickr (TM) data"
+    )
+    .option(
+      "-p, --auth-port [port]",
+      "The authorization callback port. Defaults to 7777"
+    )
     .option(
       "-v, --verbose",
       "Output more verbose info to the log",
@@ -55,21 +61,24 @@ async function run() {
       0
     )
     .action(async cmd => {
-      await runCommand(cmd, async (logger, api) => {
-        const exp = new Export(api);
-        logger.listen(exp);
-        await exp.run();
+      await runCommand(cmd, async (logger, opts) => {
+        const authorizer = new Authorizer(opts);
+        logger.listen(authorizer);
+        await authorizer.init();
       });
     });
 
+  // Sync command
   app
     .command("sync")
     .description(
       "export and then add your photos and comments to a local textile node"
     )
-    .option("-k, --api-key [key]", "Your Flickr (TM) API key")
-    .option("-s, --api-secret [secret]", "Your Flickr (TM) API secret")
-    .option("-u, --username [username]", "Your Flickr (TM) username")
+    .option(
+      "-o, --output-dir [dir]",
+      "The directory in which to save your Flickr (TM) data"
+    )
+    .option("-b, --batch-size [size]", "Size of the batches to download")
     .option(
       "-v, --verbose",
       "Output more verbose info to the log",
@@ -77,8 +86,9 @@ async function run() {
       0
     )
     .action(async cmd => {
-      await runCommand(cmd, async (logger, api) => {
-        const sync = new Sync(api);
+      await runCommand(cmd, async (logger, opts) => {
+        const api = new API(opts);
+        const sync = new Sync(api, opts);
         logger.listen(sync);
         await sync.run();
       });
