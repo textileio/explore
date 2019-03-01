@@ -18,22 +18,26 @@ class Export extends EventEmitter2 {
       while (hasMore) {
         // This could all be done asynchronously as a bunch, but I'm not sure
         // if that is desired
-        const { photos: photoList, page, pages } = await this.api.getPhotoList(
-          curPage
-        );
+        const list = await this.api.getPhotoList(curPage);
+        if (!list) {
+          return;
+        }
+        const { photos: photoList, page, pages } = list;
+
         curPage += 1;
         hasMore = page < pages;
 
         for (let i = 0; i < photoList.length; i += 1) {
           const photo = photoList[i];
           if (onPhotoFound) {
-            onPhotoFound(photo);
+            await onPhotoFound(photo);
           }
         }
       }
       this.emit("info", {
         msg: `${this.name} export complete`,
-        type: "success"
+        type: "success",
+        lvl: 1
       });
     } catch (err) {
       this.emit("error", {

@@ -1,12 +1,13 @@
 const { EventEmitter2 } = require("eventemitter2");
+const FormData = require("form-data");
 const Fs = require("fs");
-const Textile = require("js-textile-http-client");
+const Textile = require("../deps/js-textile-http-client");
 const Exp = require("./export");
 
 class Sync extends EventEmitter2 {
   constructor(api, options) {
     super();
-    this.api = api;
+    this.name = api.name;
     this.exp = new Exp(api);
     this.textile = new Textile(options);
 
@@ -18,12 +19,12 @@ class Sync extends EventEmitter2 {
       msg: `Attempting to locate the textile default 'media' schema`,
       lvl: 1
     });
-    const mediaSchema = await this.textile.schema.getByName("media");
+    const mediaSchema = await this.textile.schemas.getByName("media");
     if (!mediaSchema) {
       throw new Error("Unable to create thread. Media schema is missing");
     }
 
-    const thrd = await this.textile.thread.getByName(name);
+    const thrd = await this.textile.threads.getByName(name);
     if (thrd) {
       return thrd;
     }
@@ -32,7 +33,7 @@ class Sync extends EventEmitter2 {
       msg: `Creating new textile thread '${name}'`,
       lvl: 1
     });
-    return this.textile.thread.add(name, {
+    return this.textile.threads.add(name, {
       schema: mediaSchema.id,
       type: "open",
       sharing: "shared"
@@ -43,14 +44,17 @@ class Sync extends EventEmitter2 {
     if (comments && comments.comment) {
       const cmntAr = comments.comment;
       for (let i = 0; i < cmntAr.length; i += 1) {
-        const comment = cmntAr[i];
-        if (comment._content) {
+        const { _content: cmnt, realname } = cmntAr[i];
+        if (cmnt) {
           this.emit("comment.attach", {
             msg: "Attaching a comment to a photo in textile",
             lvl: 1,
-            data: comment
+            data: cmnt
           });
-          await this.textile.block.addComment(savedId, comment._content);
+          await this.textile.blocks.addComment(
+            savedId,
+            `[${realname}] ${cmnt}`
+          );
         }
       }
     }
@@ -59,19 +63,23 @@ class Sync extends EventEmitter2 {
   async addPhoto(thread, photo) {
     try {
       this.emit("photo.add", {
-        msg: `Adding photo ${photo.id} to textile thread '${thread.name}'`
+        msg: `Adding photo ${photo.id} to textile thread '${thread.name}'`,
+        data: photo
       });
 
-      const stream = Fs.createReadStream(photo.path);
-      const saved = await this.textile.thread.addFileStream(
+      const saved = await this.textile.threads.addFileStream(
         thread.id,
-        stream,
+        () => {
+          const stream = Fs.createReadStream(photo.path);
+          const form = new FormData();
+          form.append("file", stream, photo.path);
+          return form;
+        },
         photo.name,
         {
           caption: photo.title._content
         }
       );
-      console.log("saved", saved);
 
       await this.addComments(saved.id, photo.comments);
     } catch (er) {
@@ -86,17 +94,17 @@ class Sync extends EventEmitter2 {
 
   async run() {
     try {
-      const thread = await this.createThread(`${this.api.name} Export`);
+      const thread = await this.createThread(`${this.name} Export`);
 
-      await this.exp.run(photo => this.addPhoto(thread, photo));
+      await this.exp.run(async photo => this.addPhoto(thread, photo));
 
       this.emit("sync.complete", {
-        msg: `${this.api.name} sync completed successfully`,
+        msg: `${this.name} sync completed`,
         type: "success"
       });
     } catch (er) {
       this.emit("sync.error", {
-        msg: `An error occurred during the ${this.api.name} sync`,
+        msg: `An error occurred during the ${this.name} sync`,
         error: er
       });
     }
