@@ -67,7 +67,7 @@ class Sync extends EventEmitter2 {
         data: photo
       });
 
-      const saved = await this.textile.threads.addFileStream(
+      const saved = await this.textile.threads.addFile(
         thread.id,
         () => {
           const stream = Fs.createReadStream(photo.path);
