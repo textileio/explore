@@ -27,6 +27,7 @@
   "author": "robbynshaw@gmail.com",
   "license": "MIT",
   "dependencies": {
+    "@textileio/js-http-client": "^0.1.6",
     "axios": "^0.18.0",
     "commander": "^2.19.0",
     "eventemitter2": "^5.0.1",

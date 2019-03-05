@@ -1,7 +1,7 @@
 const { EventEmitter2 } = require("eventemitter2");
 const FormData = require("form-data");
 const Fs = require("fs");
-const Textile = require("../deps/js-textile-http-client");
+const Textile = require("@textileio/js-http-client");
 const Exp = require("./export");
 
 class Sync extends EventEmitter2 {

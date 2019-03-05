@@ -10,16 +10,26 @@ git clone https://github.com/textileio/explore.git
 * Install dependencies and add it to your path
 ```sh
 cd explore/flickr-exporter
-npm install
+yarn install
 
 # Add it to your path
-npm link
+yarn link
 ```
 
 ## Usage
 
+Connect the tool to your account...
+
+> This will bring you to the Flickr site where you will need to authorize
+> the application in a web browser.
+
 ```sh
 flickr-exporter init -k MY_FLICKR_API_KEY -s MY_FLICKR_SECRET
+```
+
+Run the sync process:
+
+```sh
 flickr-exporter sync
 ```
 
@@ -68,8 +78,8 @@ Options:
 ```sh
 # Lint everything
 # NOTE: Linting uses 'prettier' to auto-fix styling issues when possible
-npm run lint
+yarn lint
 
 # Watch the folder and run the linter when changes happen
-npm run lint-watch
+yarn lint-watch
 ```
