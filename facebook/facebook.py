@@ -64,7 +64,7 @@ def savebook(exec_, path):
                         caption = photo.get("description", "")
                         uri = os.path.join(tmp, photo["uri"])
                         comments = [
-                            "{} said \"{}\"".format(c["author"], c["comment"]) 
+                            u"{} said \"{}\"".format(c["author"], c["comment"]) 
                             for c in photo.get("comments", [])
                         ]
                         add_photo(exec_, uri, caption, comments, thread)
