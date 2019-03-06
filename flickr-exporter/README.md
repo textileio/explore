@@ -18,14 +18,46 @@ yarn link
 
 ## Usage
 
+### Startup a Textile daemon
+
+Follow the steps on the Textile [wiki](https://github.com/textileio/go-textile/wiki) to
+get a Textile daemon up and running.
+
+This tool was built against textile-go version **1.0.0-rc23**. Subsequent versions
+might not work due to API changes in the daemon. Please create an issue if you have
+any trouble.
+
+### Get An API Key
+
+In order to connect to your Flickr ™ account, you will need to aquire an
+API access key. The process for getting a key is instantaneous.
+
+* First, log into your Flickr ™ [account](https://www.flickr.com/).
+* Next, go to [https://www.flickr.com/services/apps/create/apply/](https://www.flickr.com/services/apps/create/apply/).
+  * Choose "Apply for a non-commercial key"
+  * Write "Textile Sync Tool" or something like that for the name of the app.
+  * Write "A tool for exporting photos and comments and importing them into Textile" in the
+    description.
+  * Click the required boxes and "Submit"
+
+Once you have completed this process, you will be presented with your *Consumer Key* and
+*Consumer Secret*. These are the *api-key* and *api-secret* that you will pass into the 
+*init* command below.
+
+### Connect
 Connect the tool to your account...
 
 > This will bring you to the Flickr site where you will need to authorize
 > the application in a web browser.
 
 ```sh
-flickr-exporter init -k MY_FLICKR_API_KEY -s MY_FLICKR_SECRET
+flickr-exporter init --api-key MY_FLICKR_API_KEY --api-secret MY_FLICKR_SECRET
 ```
+
+You will then be prompted with a URL. Click that URL to visit a web page which will
+authorize your account.
+
+### Sync
 
 Run the sync process:
 
