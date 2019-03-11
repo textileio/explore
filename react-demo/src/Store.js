@@ -60,7 +60,8 @@ class Store {
         }
       }
       if (!avatarThread) {
-        const avatarSchema = textile.schemas.defaults().avatar
+        const schemas = await textile.schemas.defaults()
+        const avatarSchema = schemas.avatar
         const file = await textile.schemas.add(avatarSchema)
         avatarThread = await textile.threads.add('avatars', {
           key: THREAD_KEY,
