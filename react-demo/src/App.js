@@ -23,7 +23,7 @@ class App extends Component {
         default:
           return (
             <Dimmer active={store.status === 'offline'}>
-              <Loader size='massive'>{store.status === 'offline'}</Loader>
+              <Loader size='massive'></Loader>
             </Dimmer>
           )
       }
